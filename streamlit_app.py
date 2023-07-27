@@ -10,10 +10,10 @@ import numpy as np
 
 Feel free to upload resume files below to analyze them by talking to our chatbot
 
--Parthiv and Sadman
+- Parthiv and Sadman
 """
 
-uploaded_files = st.file_uploader("Choose a CSV file", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Choose a PDF file", accept_multiple_files=True)
 for uploaded_file in uploaded_files:
     bytes_data = uploaded_file.read()
     st.write("filename:", uploaded_file.name)
