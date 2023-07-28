@@ -12,6 +12,8 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 
+import time
+
 if os.name == 'posix' and os.uname().sysname == 'Linux':
     __import__('pysqlite3')
     import sys
@@ -75,7 +77,23 @@ def generate_response(uploaded_file, openai_api_key, query_text):
             chain_type='stuff',
             retriever=retriever
         )
-        return qa.run(query_text)
+        
+        # create a progress bar
+        progress_bar = st.progress(0)
+        progress_percent = 0
+        
+        response = qa.run(query_text)
+        
+        # update progress bar
+        progress_percent = 100
+        progress_bar.progress(progress_percent)
+        
+        # remove progress bar
+        time.sleep(0.5)
+        progress_bar.empty()
+        
+        return response
+        
 
 uploaded_file = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
 
@@ -89,6 +107,7 @@ with st.form('myform', clear_on_submit=False):
         with st.spinner('Thinking...'):
             response = generate_response(uploaded_file, openai_api_key, query_text)
             result.append(response)
+            st.balloons() 
 
 if len(result):
     st.info(response)
