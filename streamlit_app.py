@@ -35,28 +35,25 @@ def preprocess(text):
     return text
 
 # convert pdf to text
-def pdf_to_text(file, start_page=1, end_page=None):
-    doc = fitz.open(stream=file[0].read(), filetype='pdf')
-    total_pages = doc.page_count
-
-    if end_page is None:
-        end_page = total_pages
-
+def pdf_to_text(files):
     text_list = []
+    for file in files:
+        doc = fitz.open(stream=file.read(), filetype='pdf')
+        total_pages = doc.page_count
 
-    for i in range(start_page - 1, end_page):
-        text = doc.load_page(i).get_text("text")
-        text = preprocess(text)
-        text_list.append(text)
+        for i in range(total_pages):
+            text = doc.load_page(i).get_text("text")
+            text = preprocess(text)
+            text_list.append(text)
 
-    doc.close()
+        doc.close()
     return text_list
 
 # generate response from uploaded resume using openai
-def generate_response(uploaded_file, openai_api_key, query_text):
+def generate_response(uploaded_files, openai_api_key, query_text):
     # load document if file is uploaded
-    if uploaded_file is not None:
-        documents=pdf_to_text(uploaded_file)
+    if uploaded_files is not None:
+        documents=pdf_to_text(uploaded_files)
         
         # split documents into chunks
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
@@ -95,19 +92,19 @@ def generate_response(uploaded_file, openai_api_key, query_text):
         return response
         
 
-uploaded_file = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
+uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
 
 result = []
 with st.form('myform', clear_on_submit=False):
-    query_text = st.text_input('Enter your question:', placeholder = "What is the candidate's GPA?", disabled=not uploaded_file)
+    query_text = st.text_input('Enter your question:', placeholder = "What is the candidate's GPA?", disabled=not uploaded_files)
     
-    submitted = st.form_submit_button('Ask', disabled=not uploaded_file)
+    submitted = st.form_submit_button('Ask', disabled=not uploaded_files)
     
     if submitted and openai_api_key.startswith('sk-'):
         with st.spinner('Thinking...'):
-            response = generate_response(uploaded_file, openai_api_key, query_text)
+            response = generate_response(uploaded_files, openai_api_key, query_text)
             result.append(response)
-            st.balloons() 
+            st.success('Query received!', icon="✅")
 
 if len(result):
     st.info(response)
