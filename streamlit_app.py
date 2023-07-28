@@ -12,6 +12,13 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 
+if os.name == 'posix' and os.uname().sysname == 'Linux':
+    __import__('pysqlite3')
+    import sys
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+    import sqlite3
+    print(f"sqlite3 version: {sqlite3.sqlite_version}")
+
 load_dotenv()
 openai_api_key = os.environ['OPENAI_API_KEY']
 
