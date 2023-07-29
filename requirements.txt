@@ -99,3 +99,5 @@ websockets==11.0.3
 yarl==1.9.2
 zipp==3.16.2
 pysqlite3-binary
+pgml
+asyncio
