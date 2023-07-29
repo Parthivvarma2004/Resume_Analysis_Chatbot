@@ -130,16 +130,6 @@ def generate_response(openai_api_key, context_for_resume):
     )
     return response["choices"][0]["message"]["content"]
     
-    
-# storing uploaded file
-uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
-uploaded_documents = []
-uploaded_documents = pdfs_to_documents(uploaded_files)
-
-
-# creating collection
-collection_name = "resumes"
-
 async def database_functions(collection_name, documents, db):
     collection = await db.create_or_get_collection(collection_name)
     await collection.upsert_documents(documents)
@@ -155,13 +145,28 @@ async def vector_search_function(query_text, db):
     for search_result in vector_search_results:
         context += search_result[1] + "/n"
     context += query_text
-    return context
+    return context   
 
-asyncio.run(database_functions(collection_name = collection_name, documents = uploaded_documents, db=db))
+# storing uploaded file
+with st.form('myform', clear_on_submit=False):
+    uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
+    add_resume_to_database = st.form_submit_button('Add file(s) to database')
+    
+    if add_resume_to_database:
+        with st.spinner('Adding files to database...'):
+            uploaded_documents = []
+            uploaded_documents = pdfs_to_documents(uploaded_files)
+            # creating collection
+            collection_name = "resumes"
+            asyncio.run(database_functions(collection_name = collection_name, documents = uploaded_documents, db=db))
+            st.success('Files Added!', icon="✅")
+
+
+
 
 result = []
 with st.form('myform', clear_on_submit=False):
-    query_text = st.text_input('Enter your question:', placeholder = "What is the candidate's GPA?")
+    query_text = st.text_input('Enter your question:', placeholder = "Ask a question to get information on the resumes in our database")
     
     submitted = st.form_submit_button('Ask')
     
