@@ -148,7 +148,7 @@ async def vector_search_function(query_text, db):
     return context   
 
 # storing uploaded file
-with st.form('myform', clear_on_submit=False):
+with st.form('FileUploadForm', clear_on_submit=False):
     uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
     add_resume_to_database = st.form_submit_button('Add file(s) to database')
     
@@ -162,10 +162,8 @@ with st.form('myform', clear_on_submit=False):
             st.success('Files Added!', icon="✅")
 
 
-
-
 result = []
-with st.form('myform', clear_on_submit=False):
+with st.form('Queryform', clear_on_submit=False):
     query_text = st.text_input('Enter your question:', placeholder = "Ask a question to get information on the resumes in our database")
     
     submitted = st.form_submit_button('Ask')
