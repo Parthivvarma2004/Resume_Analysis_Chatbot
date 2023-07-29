@@ -171,7 +171,7 @@ with st.form('Queryform', clear_on_submit=False):
     if submitted and openai_api_key.startswith('sk-'):
         
         with st.spinner('Thinking...'):
-            context_for_resume = asyncio.run(vector_search_function(collection_name= COLLECTION_NAME, query_text, db))
+            context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
             #print(context_for_resume)
             response = generate_response(openai_api_key, context_for_resume)
             result.append(response)
