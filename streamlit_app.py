@@ -18,6 +18,8 @@ from pgml import Database
 
 import time
 
+COLLECTION_NAME = "resumes"
+
 if os.name == 'posix' and os.uname().sysname == 'Linux':
     __import__('pysqlite3')
     import sys
@@ -138,7 +140,7 @@ async def database_functions(collection_name, documents, db):
     await collection.generate_chunks()
     await collection.generate_embeddings()
 
-async def vector_search_function(query_text, db):
+async def vector_search_function(collection_name, query_text, db):
     collection = await db.create_or_get_collection(collection_name)
     vector_search_results = await collection.vector_search(query_text, top_k = 3)
     context = ""
@@ -156,9 +158,7 @@ with st.form('FileUploadForm', clear_on_submit=False):
         with st.spinner('Adding files to database...'):
             uploaded_documents = []
             uploaded_documents = pdfs_to_documents(uploaded_files)
-            # creating collection
-            collection_name = "resumes"
-            asyncio.run(database_functions(collection_name = collection_name, documents = uploaded_documents, db=db))
+            asyncio.run(database_functions(collection_name = COLLECTION_NAME, documents = uploaded_documents, db=db))
             st.success('Files Added!', icon="✅")
 
 
@@ -171,7 +171,7 @@ with st.form('Queryform', clear_on_submit=False):
     if submitted and openai_api_key.startswith('sk-'):
         
         with st.spinner('Thinking...'):
-            context_for_resume = asyncio.run(vector_search_function(query_text, db))
+            context_for_resume = asyncio.run(vector_search_function(collection_name= COLLECTION_NAME, query_text, db))
             #print(context_for_resume)
             response = generate_response(openai_api_key, context_for_resume)
             result.append(response)
