@@ -153,30 +153,25 @@ async def vector_search_function(collection_name, query_text, db):
 
 # Function to delete all data from the database
 def delete_all_data():
-    try:
-        connection = psycopg2.connect(
-            user="u_jkyrhncekqwp2ik",
-            password="fhnv6el1ibcvwwm",
-            host="02f7e6f1-1adb-4347-835a-02c74fcccb0e.db.cloud.postgresml.org",
-            port="6432",
-            database="pgml_scelnd4epc0lxu4"
-        )
+    connection = psycopg2.connect(
+        user="u_jkyrhncekqwp2ik",
+        password="fhnv6el1ibcvwwm",
+        host="02f7e6f1-1adb-4347-835a-02c74fcccb0e.db.cloud.postgresml.org",
+        port="6432",
+        database="pgml_scelnd4epc0lxu4"
+    )
 
-        cursor = connection.cursor()
+    cursor = connection.cursor()
 
-        cursor.execute("DELETE FROM resumes;")
-        connection.commit()
+    cursor.execute("DELETE FROM resumes;")
+    connection.commit()
 
-        st.success("All data has been deleted from the table.")
+    st.success("All data has been deleted from the table.")
 
-    except psycopg2.Error as error:
-        st.error("Error while deleting data:", error)
-
-    finally:
-        if cursor:
-            cursor.close()
-        if connection:
-            connection.close()
+    if cursor:
+        cursor.close()
+    if connection:
+        connection.close()
 
 # storing uploaded file
 with st.form('FileUploadForm', clear_on_submit=False):
