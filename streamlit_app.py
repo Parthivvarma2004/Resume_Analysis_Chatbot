@@ -30,13 +30,11 @@ if os.name == 'posix' and os.uname().sysname == 'Linux':
     print(f"sqlite3 version: {sqlite3.sqlite_version}")
     
 # setting up the database
-#conninfo = os.environ.get("DATABASE_URL")
-#db = Database(conninfo)
+conninfo = os.environ.get("DATABASE_URL")
+db = Database(conninfo)
 
-#load_dotenv()
-#openai_api_key = os.environ['OPENAI_API_KEY']
-db = Database("postgres://u_jkyrhncekqwp2ik:fhnv6el1ibcvwwm@02f7e6f1-1adb-4347-835a-02c74fcccb0e.db.cloud.postgresml.org:6432/pgml_scelnd4epc0lxu4")
-openai_api_key = "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"
+load_dotenv()
+openai_api_key = os.environ['OPENAI_API_KEY']
 
 # set page title
 st.set_page_config(page_title='Team Byte Busters')
