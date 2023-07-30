@@ -169,7 +169,7 @@ def delete_all_data():
 
         st.success("All data has been deleted from the table.")
 
-    except (Exception, psycopg2.Error) as error:
+    except psycopg2.Error as error:
         st.error("Error while deleting data:", error)
 
     finally:
