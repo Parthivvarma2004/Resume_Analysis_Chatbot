@@ -30,12 +30,13 @@ if os.name == 'posix' and os.uname().sysname == 'Linux':
     print(f"sqlite3 version: {sqlite3.sqlite_version}")
     
 # setting up the database
-conninfo = os.environ.get("DATABASE_URL")
-db = Database(conninfo)
+#conninfo = os.environ.get("DATABASE_URL")
+#db = Database(conninfo)
 
-load_dotenv()
-openai_api_key = os.environ['OPENAI_API_KEY']
-
+#load_dotenv()
+#openai_api_key = os.environ['OPENAI_API_KEY']
+db = Database("postgres://u_jkyrhncekqwp2ik:fhnv6el1ibcvwwm@02f7e6f1-1adb-4347-835a-02c74fcccb0e.db.cloud.postgresml.org:6432/pgml_scelnd4epc0lxu4")
+openai_api_key = "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"
 
 # set page title
 st.set_page_config(page_title='Team Byte Busters')
@@ -118,7 +119,7 @@ def pdfs_to_documents(files):
         #progress_bar.empty()
         
         #return response
-        
+    
 def generate_response(openai_api_key, context_for_resume):
     openai.api_key = openai_api_key
     messages = [  
@@ -151,6 +152,31 @@ async def vector_search_function(collection_name, query_text, db):
     context += query_text
     return context   
 
+async def delete_all_data(db, collection_name):
+    db.archive_collection(collection_name)
+
+#Opening note
+
+st.title("Important notice 📄")
+
+st.write("🚀 **For a better user experience and to avoid any confusion,** we kindly request all users testing our app to clear the database before use.")
+
+st.write("🔴 **Clearing the database before use will ensure that the chatbot doesn't mix up your data with previous users,** allowing you to have a smooth experience during testing.")
+
+st.write("Thank you for your cooperation!")
+
+#delete button
+st.title("Clear database")
+
+st.write("Click the button below to delete all data from the database.")
+confirmation = st.checkbox("I understand that this action will delete all data. Confirm?")
+if st.button("Delete All Data") and confirmation:
+    with st.spinner('Deleting files from database...'):
+        asyncio.run(delete_all_data(db=db, collection_name=COLLECTION_NAME))
+        st.success('Database cleared!', icon="✅")
+    
+
+    
 # storing uploaded file
 with st.form('FileUploadForm', clear_on_submit=False):
     uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
@@ -182,12 +208,6 @@ with st.form('Queryform', clear_on_submit=False):
 if len(result):
     st.info(response)
 
-#delete button
-st.title("Delete All Data from PostgreSQL Database")
 
-st.write("Click the button below to delete all data from the table.")
-confirmation = st.checkbox("I understand that this action will delete all data. Confirm?")
-if st.button("Delete All Data") and confirmation:
-    asyncio.run(db.archive_collection(COLLECTION_NAME))
     
 #If you have any questions, checkout our [documentation](add a link to our instruction manual here) 
