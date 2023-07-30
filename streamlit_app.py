@@ -188,6 +188,6 @@ st.title("Delete All Data from PostgreSQL Database")
 st.write("Click the button below to delete all data from the table.")
 confirmation = st.checkbox("I understand that this action will delete all data. Confirm?")
 if st.button("Delete All Data") and confirmation:
-    db.archive_collection(name = {COLLECTION_NAME})
+    db.archive_collection(name = "resumes")
     
 #If you have any questions, checkout our [documentation](add a link to our instruction manual here) 
