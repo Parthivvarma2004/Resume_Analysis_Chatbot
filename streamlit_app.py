@@ -16,6 +16,8 @@ from langchain.chains import RetrievalQA
 import asyncio
 from pgml import Database
 
+import psycopg2
+
 import time
 
 COLLECTION_NAME = "resumes"
@@ -149,6 +151,33 @@ async def vector_search_function(collection_name, query_text, db):
     context += query_text
     return context   
 
+# Function to delete all data from the database
+def delete_all_data():
+    try:
+        connection = psycopg2.connect(
+            user="u_jkyrhncekqwp2ik",
+            password="fhnv6el1ibcvwwm",
+            host="02f7e6f1-1adb-4347-835a-02c74fcccb0e.db.cloud.postgresml.org",
+            port="6432",
+            database="pgml_scelnd4epc0lxu4"
+        )
+
+        cursor = connection.cursor()
+
+        cursor.execute("DELETE FROM resumes;")
+        connection.commit()
+
+        st.success("All data has been deleted from the table.")
+
+    except (Exception, psycopg2.Error) as error:
+        st.error("Error while deleting data:", error)
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
 # storing uploaded file
 with st.form('FileUploadForm', clear_on_submit=False):
     uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
@@ -180,4 +209,12 @@ with st.form('Queryform', clear_on_submit=False):
 if len(result):
     st.info(response)
 
+#delete button
+st.title("Delete All Data from PostgreSQL Database")
+
+st.write("Click the button below to delete all data from the table.")
+confirmation = st.checkbox("I understand that this action will delete all data. Confirm?")
+if st.button("Delete All Data") and confirmation:
+    delete_all_data()
+    
 #If you have any questions, checkout our [documentation](add a link to our instruction manual here) 
