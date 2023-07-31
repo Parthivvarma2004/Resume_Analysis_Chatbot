@@ -13,7 +13,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain.chains import ConversationChain
-from langchain.memory import ConversationSummaryMemory
+from langchain.memory import ConversationBufferWindowMemory
 
 from langchain.chains import LLMChain
 
@@ -49,7 +49,7 @@ if os.name == 'posix' and os.uname().sysname == 'Linux':
     import sqlite3
     print(f"sqlite3 version: {sqlite3.sqlite_version}")
     
-load_dotenv()
+#load_dotenv()
     
 # setting up the database
 conninfo = os.environ['DATABASE_URL']
@@ -140,25 +140,34 @@ def pdfs_to_documents(files):
         
         #return response
 
+def get_conversation():
+    llm = ChatOpenAI(openai_api_key=openai_api_key, temperature = 0.0)
+    prompt = ChatPromptTemplate(
+        messages=[
+            SystemMessagePromptTemplate.from_template(
+                "You are a resume analyzer. Resume text from a database will be sent to you and you will be asked to provide information from them."
+            ),
+            # The `variable_name` here is what must align with memory
+            MessagesPlaceholder(variable_name="chat_history"),
+            HumanMessagePromptTemplate.from_template("{input}")
+        ]
+    )
+    # Notice that we `return_messages=True` to fit into the MessagesPlaceholder
+    # Notice that `"chat_history"` aligns with the MessagesPlaceholder name.
+    memory = ConversationBufferWindowMemory(k = 10, memory_key="chat_history", return_messages=True)
+    conversation = ConversationChain(
+        llm=llm,
+        prompt=prompt,
+        verbose=True,
+        memory=memory
+    )
+    return conversation
 
-llm = ChatOpenAI(temperature= 0.0)
-# Notice that "chat_history" is present in the prompt template
-template = """You are a resume analyzer. Resume text from a database will be given to you and you must find relevant information about the candidates from them.
-Previous conversation:
-{chat_history}
-
-New human question: {question}
-Response:"""
-
-prompt = PromptTemplate.from_template(template)
-# Notice that we need to align the `memory_key`
-memory = ConversationSummaryMemory(memory_key="chat_history", llm=llm, max_token_limit=300)
-conversation = LLMChain(
-    llm=llm,
-    prompt=prompt,
-    verbose=True,
-    memory=memory
-)
+conversation_key = "conversation"
+if conversation_key not in st.session_state:
+    st.session_state[conversation_key] = get_conversation()
+    
+conversation = st.session_state[conversation_key]
     
 async def database_functions(collection_name, documents, db):
     collection = await db.create_or_get_collection(collection_name)
@@ -173,7 +182,7 @@ async def vector_search_function(collection_name, query_text, db):
     vector_search_results = await collection.vector_search(query_text, top_k = 3)
     context = ""
     for search_result in vector_search_results:
-        context += search_result[1] + "/n"
+        context += search_result[1] + "\n"
     context += query_text
     return context   
 
@@ -234,7 +243,6 @@ with st.chat_message("assistant"):
 
 # if len(result):
 #     st.info(response)
-st.title("Messages")
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
@@ -251,7 +259,7 @@ if "openai_model" not in st.session_state:
         
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
+    
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -268,11 +276,13 @@ if query_text := st.chat_input("Ask a question to get information on the resumes
             try:
                 context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
                 #print(context_for_resume)
-    
-                response = conversation({"question": f"{context_for_resume}"})
+                conversation = st.session_state[conversation_key]
+                response = conversation.predict(input = context_for_resume)
+                print(response)
             except Exception as e: 
-                response = "Currently, our database does not contain any resumes. We kindly request you to add a resume to our database before proceeding with any questions for the chatbot. Thank you for your cooperation and understanding."
-        
+                #response = "Currently, our database does not contain any resumes. We kindly request you to add a resume to our database before proceeding with any questions for the chatbot. Thank you for your cooperation and understanding."
+                response = f"error: {e}"
+                
         for chunk in response.split():
             full_response += chunk + " "
             sleep_time = random.triangular(0.005, 0.06, 0.0001)
