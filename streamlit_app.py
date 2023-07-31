@@ -184,13 +184,12 @@ with st.chat_message("assistant"):
     if st.button("Delete All Data") and confirmation:
         with st.spinner('Deleting files from database...'):
             asyncio.run(delete_all_data(db=db, collection_name=COLLECTION_NAME))
-            st.success('Database cleared!', icon="✅")
+            st.success('Database cleared!', icon="🗑️")
     
-
 with st.chat_message("assistant"):
     with st.form('FileUploadForm', clear_on_submit=False):
         uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
-        add_resume_to_database = st.form_submit_button('Add file(s) to database')
+        add_resume_to_database = st.form_submit_button('Add to database')
         
         if add_resume_to_database:
             with st.spinner('Adding files to database...'):
@@ -199,27 +198,37 @@ with st.chat_message("assistant"):
                 asyncio.run(database_functions(collection_name = COLLECTION_NAME, documents = uploaded_documents, db=db))
                 st.success('Files Added!', icon="✅")
 
-result = []
-with st.form('Queryform', clear_on_submit=False):
-    query_text = st.text_input('Enter your question:', placeholder = "Ask a question to get information on the resumes in our database")
+# result = []
+# with st.form('Queryform', clear_on_submit=False):
+#     query_text = st.text_input('Enter your question:', placeholder = "Ask a question to get information on the resumes in our database")
     
-    submitted = st.form_submit_button('Ask')
+#     submitted = st.form_submit_button('Ask')
     
-    if submitted and openai_api_key.startswith('sk-'):
+#     if submitted and openai_api_key.startswith('sk-'):
         
-        with st.spinner('Thinking...'):
-            context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
-            #print(context_for_resume)
-            response = generate_response(context_for_resume)
-            result.append(response)
-            st.success('Query received!', icon="✅")
+#         with st.spinner('Thinking...'):
+#             context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
+#             #print(context_for_resume)
+#             response = generate_response(context_for_resume)
+#             result.append(response)
+#             st.success('Query received!', icon="✅")
 
-if len(result):
-    st.info(response)
+# if len(result):
+#     st.info(response)
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
 
+# NOT WORKING SESSION STATE MANAGEMENT
+# also just repeats current messages after uploading new resume in middle of chat session
+
+# if "messages" in st.session_state:
+#     for message in st.session_state.messages:
+#         if message["role"] == "user":
+#             st.write(f"User: {message['content']}")
+#         else:
+#             st.write(f"Assistant: {message['content']}")
+        
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
