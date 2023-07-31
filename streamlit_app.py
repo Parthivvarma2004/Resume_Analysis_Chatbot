@@ -22,6 +22,7 @@ from langchain.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
+    PromptTemplate
 )
 
 import asyncio
@@ -138,41 +139,26 @@ def pdfs_to_documents(files):
         #progress_bar.empty()
         
         #return response
-    
-def generate_response(context_for_resume):
-#    messages = [  
- #               {'role':'system',
-  #              'content':'You are a resume analyzer. Resume text from a database will be given to you and you must find relevant information about the candidates from them.'},    
-   #             {'role':'user', 
-    #            'content':context_for_resume},  
-     #           ] 
-    #response = openai.ChatCompletion.create(
-     #   model = "gpt-3.5-turbo",
-      #  messages = messages,
-       # temperature = 0
-    #)
-    #return response["choices"][0]["message"]["content"]
-    llm = ChatOpenAI(temperature= 0.0)
-    prompt = ChatPromptTemplate(
-        messages=[
-            SystemMessagePromptTemplate.from_template(
-                "You are a resume analyzer. You will be given text from resumes in the database and will be asked to answer questions based on them."
-            ),
-            # The `variable_name` here is what must align with memory
-            MessagesPlaceholder(variable_name="chat_history"),
-            HumanMessagePromptTemplate.from_template("{question}")
-        ]
-    )
-    # Notice that we `return_messages=True` to fit into the MessagesPlaceholder
-    # Notice that `"chat_history"` aligns with the MessagesPlaceholder name.
-    memory = ConversationSummaryMemory(memory_key="chat_history", return_messages=True)
-    conversation = LLMChain(
-        llm=llm,
-        prompt=prompt,
-        verbose=False,
-        memory=memory
-    )
-    return conversation({"question": {context_for_resume}})
+
+
+llm = ChatOpenAI(temperature= 0.0)
+# Notice that "chat_history" is present in the prompt template
+template = """You are a resume analyzer. Resume text from a database will be given to you and you must find relevant information about the candidates from them.
+Previous conversation:
+{chat_history}
+
+New human question: {question}
+Response:"""
+
+prompt = PromptTemplate.from_template(template)
+# Notice that we need to align the `memory_key`
+memory = ConversationSummaryMemory(memory_key="chat_history", llm=llm, max_token_limit=300)
+conversation = LLMChain(
+    llm=llm,
+    prompt=prompt,
+    verbose=True,
+    memory=memory
+)
     
 async def database_functions(collection_name, documents, db):
     collection = await db.create_or_get_collection(collection_name)
@@ -248,6 +234,7 @@ with st.chat_message("assistant"):
 
 # if len(result):
 #     st.info(response)
+st.title("Messages")
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
@@ -282,7 +269,7 @@ if query_text := st.chat_input("Ask a question to get information on the resumes
                 context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
                 #print(context_for_resume)
     
-                response = generate_response(context_for_resume)
+                response = conversation({"question": f"{context_for_resume}"})
             except Exception as e: 
                 response = "Currently, our database does not contain any resumes. We kindly request you to add a resume to our database before proceeding with any questions for the chatbot. Thank you for your cooperation and understanding."
         
