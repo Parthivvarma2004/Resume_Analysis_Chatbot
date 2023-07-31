@@ -245,10 +245,13 @@ if query_text := st.chat_input("Ask a question to get information on the resumes
         message_placeholder = st.empty()
         full_response = ""
         with st.spinner('Thinking...'):
-            context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
-            #print(context_for_resume)
-                        
-            response = generate_response(context_for_resume)
+            try:
+                context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
+                #print(context_for_resume)
+    
+                response = generate_response(context_for_resume)
+            except: 
+                response = "Currently, our database does not contain any resumes. We kindly request you to add a resume to our database before proceeding with any questions for the chatbot. Thank you for your cooperation and understanding."
         
         for chunk in response.split():
             full_response += chunk + " "
