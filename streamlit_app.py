@@ -12,6 +12,17 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationSummaryMemory
+
+from langchain.chains import LLMChain
+
+from langchain.prompts import (
+    ChatPromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
 
 import asyncio
 from pgml import Database
@@ -129,18 +140,39 @@ def pdfs_to_documents(files):
         #return response
     
 def generate_response(context_for_resume):
-    messages = [  
-                {'role':'system',
-                'content':'You are a resume analyzer. Resume text will be given to you and you must find relevant information about the candidates from them.'},    
-                {'role':'user', 
-                'content':context_for_resume},  
-                ] 
-    response = openai.ChatCompletion.create(
-        model = "gpt-3.5-turbo",
-        messages = messages,
-        temperature = 0
+#    messages = [  
+ #               {'role':'system',
+  #              'content':'You are a resume analyzer. Resume text from a database will be given to you and you must find relevant information about the candidates from them.'},    
+   #             {'role':'user', 
+    #            'content':context_for_resume},  
+     #           ] 
+    #response = openai.ChatCompletion.create(
+     #   model = "gpt-3.5-turbo",
+      #  messages = messages,
+       # temperature = 0
+    #)
+    #return response["choices"][0]["message"]["content"]
+    llm = ChatOpenAI(temperature= 0.0)
+    prompt = ChatPromptTemplate(
+        messages=[
+            SystemMessagePromptTemplate.from_template(
+                "You are a resume analyzer. You will be given text from resumes in the database and will be asked to answer questions based on them."
+            ),
+            # The `variable_name` here is what must align with memory
+            MessagesPlaceholder(variable_name="chat_history"),
+            HumanMessagePromptTemplate.from_template("{question}")
+        ]
     )
-    return response["choices"][0]["message"]["content"]
+    # Notice that we `return_messages=True` to fit into the MessagesPlaceholder
+    # Notice that `"chat_history"` aligns with the MessagesPlaceholder name.
+    memory = ConversationSummaryMemory(memory_key="chat_history", return_messages=True)
+    conversation = LLMChain(
+        llm=llm,
+        prompt=prompt,
+        verbose=False,
+        memory=memory
+    )
+    return conversation({"question": {context_for_resume}})
     
 async def database_functions(collection_name, documents, db):
     collection = await db.create_or_get_collection(collection_name)
@@ -185,7 +217,8 @@ with st.chat_message("assistant"):
         with st.spinner('Deleting files from database...'):
             asyncio.run(delete_all_data(db=db, collection_name=COLLECTION_NAME))
             st.success('Database cleared!', icon="🗑️")
-    
+
+st.title("Add resume to database")
 with st.chat_message("assistant"):
     with st.form('FileUploadForm', clear_on_submit=False):
         uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
