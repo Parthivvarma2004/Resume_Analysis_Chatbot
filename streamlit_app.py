@@ -19,6 +19,13 @@ from pgml import Database
 import psycopg2
 
 import time
+import base64
+
+import pdf2image
+import zipfile
+import io
+
+from streamlit_image_select import image_select
 
 COLLECTION_NAME = "resumes"
 
@@ -29,12 +36,14 @@ if os.name == 'posix' and os.uname().sysname == 'Linux':
     import sqlite3
     print(f"sqlite3 version: {sqlite3.sqlite_version}")
     
+load_dotenv()
+    
 # setting up the database
-conninfo = os.environ.get("DATABASE_URL")
+conninfo = os.environ['DATABASE_URL']
 db = Database(conninfo)
 
-load_dotenv()
 openai_api_key = os.environ['OPENAI_API_KEY']
+openai.api_key = openai_api_key
 
 # set page title
 st.set_page_config(page_title='Team Byte Busters')
@@ -118,8 +127,7 @@ def pdfs_to_documents(files):
         
         #return response
     
-def generate_response(openai_api_key, context_for_resume):
-    openai.api_key = openai_api_key
+def generate_response(context_for_resume):
     messages = [  
                 {'role':'system',
                 'content':'You are a resume analyzer. Resume text will be given to you and you must find relevant information about the candidates from them.'},    
@@ -157,36 +165,38 @@ async def delete_all_data(db, collection_name):
 
 st.title("Important notice 📄")
 
-st.write("🚀 **For a better user experience and to avoid any confusion,** we kindly request all users testing our app to clear the database before use.")
+with st.chat_message("assistant"):
+    
+    st.write("🚀 **For a better user experience and to avoid any confusion,** we kindly request all users testing our app to clear the database before use.")
 
-st.write("🔴 **Clearing the database before use will ensure that the chatbot doesn't mix up your data with previous users,** allowing you to have a smooth experience during testing.")
+    st.write("🔴 **Clearing the database before use will ensure that the chatbot doesn't mix up your data with previous users,** allowing you to have a smooth experience during testing.")
 
-st.write("Thank you for your cooperation!")
+    st.write("Thank you for your cooperation!")
 
 #delete button
+
 st.title("Clear database")
 
-st.write("Click the button below to delete all data from the database.")
-confirmation = st.checkbox("I understand that this action will delete all data. Confirm?")
-if st.button("Delete All Data") and confirmation:
-    with st.spinner('Deleting files from database...'):
-        asyncio.run(delete_all_data(db=db, collection_name=COLLECTION_NAME))
-        st.success('Database cleared!', icon="✅")
+with st.chat_message("assistant"):
+    st.write("**Click the button below to delete all data from the database.**")
+    confirmation = st.checkbox("I understand that this action will delete all data. Confirm?")
+    if st.button("Delete All Data") and confirmation:
+        with st.spinner('Deleting files from database...'):
+            asyncio.run(delete_all_data(db=db, collection_name=COLLECTION_NAME))
+            st.success('Database cleared!', icon="✅")
     
 
-    
-# storing uploaded file
-with st.form('FileUploadForm', clear_on_submit=False):
-    uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
-    add_resume_to_database = st.form_submit_button('Add file(s) to database')
-    
-    if add_resume_to_database:
-        with st.spinner('Adding files to database...'):
-            uploaded_documents = []
-            uploaded_documents = pdfs_to_documents(uploaded_files)
-            asyncio.run(database_functions(collection_name = COLLECTION_NAME, documents = uploaded_documents, db=db))
-            st.success('Files Added!', icon="✅")
-
+with st.chat_message("assistant"):
+    with st.form('FileUploadForm', clear_on_submit=False):
+        uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
+        add_resume_to_database = st.form_submit_button('Add file(s) to database')
+        
+        if add_resume_to_database:
+            with st.spinner('Adding files to database...'):
+                uploaded_documents = []
+                uploaded_documents = pdfs_to_documents(uploaded_files)
+                asyncio.run(database_functions(collection_name = COLLECTION_NAME, documents = uploaded_documents, db=db))
+                st.success('Files Added!', icon="✅")
 
 result = []
 with st.form('Queryform', clear_on_submit=False):
@@ -199,13 +209,44 @@ with st.form('Queryform', clear_on_submit=False):
         with st.spinner('Thinking...'):
             context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
             #print(context_for_resume)
-            response = generate_response(openai_api_key, context_for_resume)
+            response = generate_response(context_for_resume)
             result.append(response)
             st.success('Query received!', icon="✅")
 
 if len(result):
     st.info(response)
 
+if "openai_model" not in st.session_state:
+    st.session_state["openai_model"] = "gpt-3.5-turbo"
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("Ask a question to get information on the resumes in our database"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        for response in openai.ChatCompletion.create(
+            model=st.session_state["openai_model"],
+            messages=[
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state.messages
+            ],
+            stream=True,
+        ):
+            full_response += response.choices[0].delta.get("content", "")
+            message_placeholder.markdown(full_response + "▌")
+        message_placeholder.markdown(full_response)
+                                
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    
     
 #If you have any questions, checkout our [documentation](add a link to our instruction manual here) 
