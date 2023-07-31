@@ -19,6 +19,7 @@ from pgml import Database
 import psycopg2
 
 import time
+import random
 import base64
 
 import pdf2image
@@ -226,23 +227,25 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Ask a question to get information on the resumes in our database"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+if query_text := st.chat_input("Ask a question to get information on the resumes in our database"):
+    st.session_state.messages.append({"role": "user", "content": query_text})
     with st.chat_message("user"):
-        st.markdown(prompt)
-
+        st.markdown(query_text)
+    
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        for response in openai.ChatCompletion.create(
-            model=st.session_state["openai_model"],
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        ):
-            full_response += response.choices[0].delta.get("content", "")
+        with st.spinner('Thinking...'):
+            context_for_resume = asyncio.run(vector_search_function(COLLECTION_NAME, query_text, db))
+            #print(context_for_resume)
+                        
+            response = generate_response(context_for_resume)
+        
+        for chunk in response.split():
+            full_response += chunk + " "
+            sleep_time = random.triangular(0.005, 0.06, 0.0001)
+            time.sleep(sleep_time)
+            # Add a blinking cursor to simulate typing
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)
                                 
