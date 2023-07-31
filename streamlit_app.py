@@ -250,7 +250,7 @@ if query_text := st.chat_input("Ask a question to get information on the resumes
                 #print(context_for_resume)
     
                 response = generate_response(context_for_resume)
-            except: 
+            except Exception as e: 
                 response = "Currently, our database does not contain any resumes. We kindly request you to add a resume to our database before proceeding with any questions for the chatbot. Thank you for your cooperation and understanding."
         
         for chunk in response.split():
