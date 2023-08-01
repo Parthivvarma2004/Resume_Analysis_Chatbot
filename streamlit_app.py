@@ -214,6 +214,13 @@ with st.chat_message("assistant"):
             st.success('Database cleared!', icon="🗑️")
 
 st.title("Add resume to database")
+
+def on_click():
+    st.session_state.user_input = ""
+
+def show_highest_gpa():
+    st.session_state.user_input = "Which candidate has the highest GPA?"
+    
 with st.chat_message("assistant"):
     with st.form('FileUploadForm', clear_on_submit=False):
         uploaded_files = st.file_uploader('Upload your resume', type='pdf', accept_multiple_files=True)
@@ -225,6 +232,20 @@ with st.chat_message("assistant"):
                 uploaded_documents = pdfs_to_documents(uploaded_files)
                 asyncio.run(database_functions(collection_name = COLLECTION_NAME, documents = uploaded_documents, db=db))
                 st.success('Files Added!', icon="✅")
+
+    buttons = [
+        "Clear",
+        "Who has the highest GPA?",
+        "Test"
+    ]
+    
+    total_chars = sum(len(button) for button in buttons)
+    relative_widths = [len(button) / total_chars for button in buttons]
+    col1, col2, col3 = st.columns(relative_widths)
+        
+    with col1: st.button(buttons[0], on_click=on_click)
+    with col2: st.button(buttons[1], on_click=show_highest_gpa)
+    with col3: st.button(buttons[2], on_click=show_highest_gpa)
 
 # result = []
 # with st.form('Queryform', clear_on_submit=False):
@@ -266,7 +287,8 @@ for message in st.session_state.messages:
 
 if query_text := st.chat_input("Ask a question to get information on the resumes in our database"):
     st.session_state.messages.append({"role": "user", "content": query_text})
-    with st.chat_message("user"):
+    user_input = st.chat_message("user")
+    with user_input:
         st.markdown(query_text)
     
     with st.chat_message("assistant"):
@@ -285,7 +307,7 @@ if query_text := st.chat_input("Ask a question to get information on the resumes
                 
         for chunk in response.split():
             full_response += chunk + " "
-            sleep_time = random.triangular(0.005, 0.06, 0.0001)
+            sleep_time = random.triangular(0.0001, 0.8, 0.0001)
             time.sleep(sleep_time)
             # Add a blinking cursor to simulate typing
             message_placeholder.markdown(full_response + "▌")
