@@ -9,6 +9,10 @@ import os
 from dotenv import load_dotenv
 import openai
 
+from langchain.llms import OpenAI
+from langchain.agents import initialize_agent
+from langchain.agents.agent_toolkits import ZapierToolkit
+from langchain.utilities.zapier import ZapierNLAWrapper
 from langchain.chat_models.openai import ChatOpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
@@ -72,6 +76,7 @@ if os.name == 'posix' and os.uname().sysname == 'Linux':
 #openai_api_key = os.environ['OPENAI_API_KEY']
 #openai.api_key = openai_api_key
 
+Zapier_NL_API_key = "sk-ak-zD8Ymb6mMnEL3AwNxDDGwgA5EK"
 db = Database("postgres://u_jkyrhncekqwp2ik:fhnv6el1ibcvwwm@02f7e6f1-1adb-4347-835a-02c74fcccb0e.db.cloud.postgresml.org:6432/pgml_scelnd4epc0lxu4")
 openai_api_key = "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"
 openai.api_key = openai_api_key
@@ -209,17 +214,7 @@ def categorizer(query_text):
         model="gpt-3.5-turbo",
         messages =  [  
         {'role':'system',
-        'content':"You are a resume analyzer. \
-                Resume text from a database will be sent to you and you will be asked questions on them.\
-                Classify each query into a primary category. \
-                Primary categories: Resume info gathering, Candidate comparison, \
-                Candidate finding, Contact candidate by email, Schedule meeting with candidate.\
-                Resume info gathering is when the user asks you to find info about candidates from their resume.\
-                Candidate comparison is when user asks you to compare between candidates. Candidate comparison could involve ranking candidates in the database, finding the best fit candidate, checking who the most qualified for a certain job is and other similar questions.\
-                Candidate finding is when user asks you to find candidates from the database with a specific skill or experience.\
-                Contact candidate by email is when user asks you to contact someone\
-                Schedule meeting with candidate is when user asks you to schedule a meeting with candidate\
-                Reply using just the category name."},    
+        'content':"You will get resume text and you should reply with just the candidate's email."},    
         {'role':'user',
         'content':f'{query_text}'},  
         ] ,
@@ -468,7 +463,34 @@ with st.chat_message("assistant"):
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
+st.title("Schedule interview with candidate")
+with st.chat_message("assistant"):
+    candidate_name = st.text_input("Candidate Name")
 
+    # Get interview date
+    interview_date = st.text_input("Interview Date")
+
+    # Get interview time
+    interview_time = st.text_input("Interview Time")
+
+    # Get interview duration
+    interview_duration = st.text_input("Interview Duration")
+    
+    company_name = st.text_input("Hiring company")
+    with st.spinner("Scheduling meeting..."):
+        if st.button("Schedule meeting"):
+            llm = OpenAI(openai_api_key= openai_api_key, temperature=0)
+            zapier = ZapierNLAWrapper(zapier_nla_api_key= Zapier_NL_API_key)
+            toolkit = ZapierToolkit.from_zapier_nla_wrapper(zapier)
+            context_for_interview = asyncio.run(vector_search_function(1, COLLECTION_NAME, f"What is {candidate_name}'s email?", db))
+            candidate_email = categorizer(context_for_interview)
+            agent = initialize_agent(toolkit.get_tools(), llm, agent="zero-shot-react-description", verbose=True)
+            agent.run(f"Create a new google calendar detailed event where the calendar is the hiring manager calendar. The attendees are {candidate_email}. The start date and time are {interview_date} and its from {interview_time} for {interview_duration}. The description is something like: Dear {candidate_name},\
+            I hope this email finds you well. I am delighted to extend my heartfelt congratulations for being selected as one of the top candidates for the job at {company_name}.\
+            Your impressive qualifications and accomplishments have truly caught our attention, and we believe you possess the skills and expertise that perfectly align with our team's requirements. We are excited to learn more about you and discuss how you can contribute to our dynamic organization.\
+            We are pleased to invite you for an interview on {interview_date} at {interview_time}. The interview is expected to last approximately {interview_duration}.\
+            Please let us know if the proposed time works for you. If there is any scheduling conflict, kindly reach out to us, and we will be more than happy to accommodate any adjustments.")
+            st.success("Interview Scheduled!", icon="✅")
             #response = ranker(query_text=context_for_summarized_resume)
             #st.write(response)       
 #st.title("Chatbot instructions") 
