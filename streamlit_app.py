@@ -413,22 +413,22 @@ with st.chat_message("assistant"):
 
 st.title("Generate comparison spreadsheet")
 with st.chat_message("assistant"):
-    st.write("Generate a downloadable spreadsheet with key data about each candidate, including GPA, work experience, skills, and more, for easy comparison.")
+    st.write("Generate a downloadable spreadsheet with key data about each candidate, including projects, work experience, skills, and more, for easy comparison.")
     if st.button("Generate spreadsheet"):
         with st.spinner('Generating...'):
             query_text = '''
-            Extract the following information from each candidate's resume: gpa, skills, experiences, degree. If a field is not applicable to a candidate, write that as N/A.
+            Extract the following information from each candidate's resume: skills, experiences, projects, degree. If a field is not applicable to a candidate, write that as N/A.
             Please provide candidate information in the following format:
             "Name of candidate 1": {
-                "GPA": "3.8",
                 "Skills": "Python, Data Analysis, Machine Learning",
                 "Experiences": "Data Analyst at XYZ Company",
+                "Projects": "Implemented a sentiment analysis model for customer reviews.",
                 "Degree": "Bachelor of Science in Computer Science"
             },
             "Name of candidate 2": {
-                "GPA": "3.5",
                 "Skills": "Java, Software Development, Testing",
                 "Experiences": "Software Engineer at ABC Solutions",
+                "Projects": "Led the development of an e-commerce platform.",
                 "Degree": "Bachelor of Engineering in Computer Engineering"
             },
             ...and so on for each candidate.
