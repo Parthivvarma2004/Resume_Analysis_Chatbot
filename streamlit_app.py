@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+import ast
 
 import re
 import fitz
@@ -19,6 +21,8 @@ from langchain.agents import initialize_agent, Tool
 from langchain.agents import AgentType
 from langchain.agents.react.base import DocstoreExplorer
 
+import openpyxl
+
 from langchain.chains import LLMChain
 
 from langchain.prompts import (
@@ -28,7 +32,7 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate
 )
-
+import xlsxwriter
 import asyncio
 from pgml import Database
 
@@ -112,6 +116,15 @@ def preprocess(text):
 #
  #       doc.close()
   #  return text_list
+  
+def parse_chatbot_output(output_str):
+    try:
+        # Use ast.literal_eval() to safely parse the string into a dictionary
+        candidate_data = ast.literal_eval(output_str)
+        return candidate_data
+    except (ValueError, SyntaxError) as e:
+        print(f"Error parsing chatbot output: {e}")
+        return {}
 
 # convert pdf to text
 def pdfs_to_documents(files):
@@ -181,7 +194,7 @@ def summarizer(resume_text):
         messages =  [  
         {'role':'system',
         'content':'You are a resume summarizer. An entire resume will be provided to you and you must summarize it within 250 tokens without losing relevant informaiton.\
-            You must keep information such as candidate gpa, candidate name, Work Experience, technical skills, Education, Certifications and Licenses, Projects and Accomplishments, Awards and Honors and Publications and Research if it exists there in the resume'},    
+            You must keep information such as candidate gpa, candidate name, candidate email, Work Experience, technical skills, Education, Certifications and Licenses, Projects and Accomplishments, Awards and Honors and Publications and Research if it exists there in the resume'},    
         {'role':'user',
         'content':f'{resume_text}'},  
         ] ,
@@ -361,25 +374,25 @@ with st.chat_message("assistant"):
                 #asyncio.run(database_functions(collection_name = COLLECTION_NAME_SUMMARIZED, documents = summarized_resumes, db=db))
                 st.success('Files Added!', icon="✅")
                 
-    buttons = [
-        "Clear",
-        "Who has the highest GPA?",
-        "Test"
-    ]
+    #buttons = [
+        #"Clear",
+        #"Who has the highest GPA?",
+        #"Test"
+    #]
     
-    total_chars = sum(len(button) for button in buttons)
-    relative_widths = [len(button) / total_chars for button in buttons]
-    col1, col2, col3 = st.columns(relative_widths)
+    #total_chars = sum(len(button) for button in buttons)
+    #relative_widths = [len(button) / total_chars for button in buttons]
+    #col1, col2, col3 = st.columns(relative_widths)
         
-    with col1: st.button(buttons[0], on_click=on_click)
-    with col2: st.button(buttons[1], on_click=show_highest_gpa)
-    with col3: st.button(buttons[2], on_click=show_highest_gpa)
+    #with col1: st.button(buttons[0], on_click=on_click)
+    #with col2: st.button(buttons[1], on_click=show_highest_gpa)
+    #with col3: st.button(buttons[2], on_click=show_highest_gpa)
 
 st.title("Compare resumes")
 
 with st.chat_message("assistant"):
     st.info('Please note, our current database limit for comparisons is 15 resumes.')
-    Job_requirement = st.text_input("Please provide the job requirements for the position that candidates will be evaluated and ranked against.")
+    Job_requirement = st.text_input("Please provide the job requirements for the position that the candidates will be evaluated and ranked against.")
     is_input_given = (Job_requirement.strip() != "")
     # Button to process the input
     if st.button("Compare resumes", disabled=not is_input_given):
@@ -397,7 +410,67 @@ with st.chat_message("assistant"):
                 response = response.removeprefix("Could not parse LLM Output: ").removesuffix("`")
             #response = ranker(query_text=context_for_summarized_resume)
             st.write(response)
-            
+
+st.title("Generate comparison spreadsheet")
+with st.chat_message("assistant"):
+    st.write("Generate a downloadable spreadsheet with key data about each candidate, including GPA, work experience, skills, and more, for easy comparison.")
+    if st.button("Generate spreadsheet"):
+        with st.spinner('Generating...'):
+            query_text = '''
+            Extract the following information from each candidate's resume: gpa, skills, experiences, degree. If a field is not applicable to a candidate, write that as N/A.
+            Please provide candidate information in the following format:
+            "Name of candidate 1": {
+                "GPA": "3.8",
+                "Skills": "Python, Data Analysis, Machine Learning",
+                "Experiences": "Data Analyst at XYZ Company",
+                "Degree": "Bachelor of Science in Computer Science"
+            },
+            "Name of candidate 2": {
+                "GPA": "3.5",
+                "Skills": "Java, Software Development, Testing",
+                "Experiences": "Software Engineer at ABC Solutions",
+                "Degree": "Bachelor of Engineering in Computer Engineering"
+            },
+            ...and so on for each candidate.
+            '''
+            context_for_summarized_resume = asyncio.run(vector_search_function(15, COLLECTION_NAME_SUMMARIZED, query_text, db))
+            llm = OpenAI(openai_api_key=openai_api_key, temperature=0, model_name="gpt-3.5-turbo")
+            react = initialize_agent(tools, llm, agent=AgentType.REACT_DOCSTORE, verbose=True)
+            try:
+                response = react.run(context_for_summarized_resume)
+            except ValueError as e:
+                response = str(e)
+                if not response.startswith("Could not parse LLM Output: "):
+                   raise e
+                response = response.removeprefix("Could not parse LLM Output: ").removesuffix("`")
+                response = response.replace("'", "\"")
+                response = "{" + response + "}"
+                #st.write(response)
+                response = parse_chatbot_output(response)
+                df = pd.DataFrame.from_dict(response, orient="index")
+
+                # Display the DataFrame in the Streamlit app
+                st.dataframe(df)
+                excel_filename = "candidate_information.xlsx"
+                with io.BytesIO() as buffer:
+                    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                        df.to_excel(writer, index_label="Candidate Name", sheet_name="Sheet1", na_rep="N/A")
+
+                    # Save the Excel file to the buffer before closing the ExcelWriter
+                    buffer.seek(0)
+                    data = buffer.getvalue()
+
+                # Create a download button for the Excel file
+                st.download_button(
+                    label="Download Excel File",
+                    data=data,
+                    file_name=excel_filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+
+            #response = ranker(query_text=context_for_summarized_resume)
+            #st.write(response)       
 #st.title("Chatbot instructions") 
 #with st.chat_message("assistant"):
 #    st.title()
