@@ -412,18 +412,16 @@ with st.chat_message("assistant"):
     if st.button("Generate spreadsheet"):
         with st.spinner('Generating...'):
             query_text = '''
-            Extract the following information from the summary of each candidate's resume: skills, experiences, projects, degree. If a field is not applicable to a candidate, write that as N/A.
-            Please provide candidate information in the following format:
-            "Name of candidate 1": {
+            The summarized resumes of multiple candidates will be sent to you. Extract the following information from the summary of each candidate's resume: name of candidate, skills, experiences, degree. If a field is not applicable to a candidate, write that as N/A.
+            Please provide candidate information in the following format. Don't forget to add commas.(Make it look like a dictionary in python for easy parsing later):
+            "Name: Name of candidate 1": {
                 "Skills": "Python, Data Analysis, Machine Learning",
                 "Experiences": "Data Analyst at XYZ Company",
-                "Projects": "Implemented a sentiment analysis model for customer reviews.",
                 "Degree": "Bachelor of Science in Computer Science"
             },
-            "Name of candidate 2": {
+            "Name: Name of candidate 2": {
                 "Skills": "Java, Software Development, Testing",
                 "Experiences": "Software Engineer at ABC Solutions",
-                "Projects": "Led the development of an e-commerce platform.",
                 "Degree": "Bachelor of Engineering in Computer Engineering"
             },
             ...and so on for each candidate.
