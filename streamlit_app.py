@@ -198,13 +198,13 @@ def summarizer(resume_text):
         model="gpt-3.5-turbo",
         messages =  [  
         {'role':'system',
-        'content':'You are a resume summarizer. An entire resume will be provided to you and you must summarize it within 200 tokens without losing relevant informaiton.\
+        'content':'You are a resume summarizer. An entire resume will be provided to you and you must summarize it within 170 tokens without losing relevant informaiton.\
             You must keep information such as candidate gpa, candidate name, candidate email, Work Experience, technical skills, Education, Certifications and Licenses, Projects and Accomplishments, Awards and Honors and Publications and Research if it exists there in the resume'},    
         {'role':'user',
         'content':f'{resume_text}'},  
         ] ,
         temperature=0.0, # this is the degree of randomness of the model's output
-        max_tokens=200, # the maximum number of tokens the model can ouptut 
+        max_tokens=170, # the maximum number of tokens the model can ouptut 
     )
     #print(response.choices[0].message["content"])
     return response.choices[0].message["content"]
