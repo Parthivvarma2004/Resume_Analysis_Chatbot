@@ -198,13 +198,13 @@ def summarizer(resume_text):
         model="gpt-3.5-turbo",
         messages =  [  
         {'role':'system',
-        'content':'You are a resume summarizer. An entire resume will be provided to you and you must summarize it within 170 tokens without losing relevant informaiton.\
+        'content':'You are a resume summarizer. An entire resume will be provided to you and you must summarize it within 120 tokens without losing relevant informaiton.\
             You must keep information such as candidate gpa, candidate name, candidate email, Work Experience, technical skills, Education, Certifications and Licenses, Projects and Accomplishments, Awards and Honors and Publications and Research if it exists there in the resume'},    
         {'role':'user',
         'content':f'{resume_text}'},  
         ] ,
         temperature=0.0, # this is the degree of randomness of the model's output
-        max_tokens=170, # the maximum number of tokens the model can ouptut 
+        max_tokens=120, # the maximum number of tokens the model can ouptut 
     )
     #print(response.choices[0].message["content"])
     return response.choices[0].message["content"]
@@ -392,7 +392,7 @@ with st.chat_message("assistant"):
     # Button to process the input
     if st.button("Compare resumes", disabled=not is_input_given):
         with st.spinner('Comparing...'):
-            query_text = f"Rank the top candidates for {Job_requirement}. If the job requirement does not have enough details for you to make a solid decision, ask the user to provide a more detailed job description. This is the maximum candidate information you can get, so ask for more job details. If the job description is not related to any of the candidate's work experience, let the user know that none of the candidates have enough experience for the particular job. "
+            query_text = f"Rank the top candidates for {Job_requirement}. If the job requirement does not have enough details for you to make a solid decision, ask the user to provide a more detailed job description. This is the maximum candidate information you can get, so ask for more job details. If the job description is not related to any of the candidate's work experience, let the user know that none of the candidates have enough experience for the particular job. Your output should be less than 900 tokens"
             context_for_summarized_resume = asyncio.run(vector_search_function(15, COLLECTION_NAME_SUMMARIZED, query_text, db))
             llm = OpenAI(openai_api_key=openai_api_key, temperature=0, model_name="gpt-3.5-turbo")
             react = initialize_agent(tools, llm, agent=AgentType.REACT_DOCSTORE, verbose=True)
