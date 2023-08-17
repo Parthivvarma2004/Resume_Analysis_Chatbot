@@ -1,6 +1,8 @@
 # Resume Analysis Chatbot
 Welcome to the Resume Analysis Chatbot project! This chatbot is designed to assist users in analyzing and managing resumes efficiently. Below, you'll find an overview of the architecture, functionality, and tools utilized in this project.
 
+You can access and test the chatbot at https://byte-busters-document-analysis-chatbot.streamlit.app/ 
+
 ## Architecture
 
 ### Frontend
